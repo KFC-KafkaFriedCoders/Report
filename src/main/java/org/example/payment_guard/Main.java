@@ -14,7 +14,8 @@ import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema;
 import java.io.IOException;
 
 public class Main {
-    private static final String KAFKA_BOOTSTRAP_SERVERS = "13.209.157.53:9092,15.164.111.153:9092,3.34.32.69:9092";
+    // private static final String KAFKA_BOOTSTRAP_SERVERS = "13.209.157.53:9092,15.164.111.153:9092,3.34.32.69:9092";
+    private static final String KAFKA_BOOTSTRAP_SERVERS = "localhost:9094";
     private static final String SOURCE_TOPIC = "test-topic";
     private static final String TARGET_TOPIC = "3_non_response";
     private static final String APP_NAME = "3_non_response_passthrough";
