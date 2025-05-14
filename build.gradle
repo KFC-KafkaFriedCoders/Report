@@ -1,0 +1,64 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'org.example.payment_guard'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Flink Core
+    implementation 'org.apache.flink:flink-streaming-java:1.18.0'
+    implementation 'org.apache.flink:flink-clients:1.18.0'
+    
+    // Flink Kafka Connector
+    implementation 'org.apache.flink:flink-connector-kafka:3.0.1-1.18'
+    implementation 'org.apache.flink:flink-connector-base:1.18.0'
+    
+    // Kafka Clients (직접 사용)
+    implementation 'org.apache.kafka:kafka-clients:3.4.0'
+    
+    // JSON Processing
+    implementation 'org.apache.flink:flink-json:1.18.0'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.2'
+    
+    // Logging
+    implementation 'org.slf4j:slf4j-api:2.0.7'
+    implementation 'org.slf4j:slf4j-simple:2.0.7'
+    
+    // Testing
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+application {
+    mainClass = project.hasProperty('mainClass') ? project.getProperty('mainClass') : 'org.example.payment_guard.Main'
+    applicationDefaultJvmArgs = [
+        '--add-opens=java.base/java.util=ALL-UNNAMED',
+        '--add-opens=java.base/java.lang=ALL-UNNAMED',
+        '--add-opens=java.base/java.lang.reflect=ALL-UNNAMED',
+        '--add-opens=java.base/java.text=ALL-UNNAMED',
+        '--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED'
+    ]
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'org.example.payment_guard.Main'
+    }
+    
+    // Include all dependencies in the jar
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
