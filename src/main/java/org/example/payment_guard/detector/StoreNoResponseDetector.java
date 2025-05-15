@@ -16,7 +16,7 @@ import org.example.payment_guard.model.Payment;
  */
 public class StoreNoResponseDetector extends KeyedProcessFunction<String, Payment, Alert> {
 
-    private static final long RESPONSE_TIMEOUT_MS = 30 * 1000; // 30초
+    private static final long RESPONSE_TIMEOUT_MS = 5 * 1000; // 30초
     private MapState<String, Long> lastPaymentTimestampMap;
 
     @Override

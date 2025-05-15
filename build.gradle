@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'application'
+    id "com.github.davidmc24.gradle.plugin.avro" version "1.9.1"
 }
 
 group = 'org.example.payment_guard'
@@ -33,6 +34,24 @@ dependencies {
     // Testing
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
+
+    // Avro
+    implementation 'org.apache.avro:avro:1.11.1'
+    implementation 'org.apache.flink:flink-avro:1.17.1' // Flink 버전에 맞게 조정
+}
+
+avro {
+    stringType = "String"
+    fieldVisibility = "PRIVATE"
+    createSetters = true
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs += 'build/generated-main-avro-java'
+        }
+    }
 }
 
 application {
@@ -42,7 +61,34 @@ application {
         '--add-opens=java.base/java.lang=ALL-UNNAMED',
         '--add-opens=java.base/java.lang.reflect=ALL-UNNAMED',
         '--add-opens=java.base/java.text=ALL-UNNAMED',
-        '--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED'
+        '--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED',
+        '--add-opens=java.base/java.util.concurrent=ALL-UNNAMED',
+        '--add-opens=java.base/java.nio=ALL-UNNAMED',
+        '--add-opens=java.base/java.util.stream=ALL-UNNAMED',
+        '--add-opens=java.base/java.util.function=ALL-UNNAMED',
+        '--add-opens=java.base/java.time=ALL-UNNAMED',
+        '-Djdk.reflect.useDirectMethodHandle=false',
+        '-Xmx2048m',  // 힙 메모리 최대 크기 설정
+        '-Xms512m'    // 힙 메모리 초기 크기 설정
+    ]
+}
+
+// Gradle 실행 JVM 옵션 설정
+tasks.withType(JavaExec) {
+    jvmArgs = [
+        '--add-opens=java.base/java.util=ALL-UNNAMED',
+        '--add-opens=java.base/java.lang=ALL-UNNAMED',
+        '--add-opens=java.base/java.lang.reflect=ALL-UNNAMED',
+        '--add-opens=java.base/java.text=ALL-UNNAMED',
+        '--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED',
+        '--add-opens=java.base/java.util.concurrent=ALL-UNNAMED',
+        '--add-opens=java.base/java.nio=ALL-UNNAMED',
+        '--add-opens=java.base/java.util.stream=ALL-UNNAMED',
+        '--add-opens=java.base/java.util.function=ALL-UNNAMED',
+        '--add-opens=java.base/java.time=ALL-UNNAMED',
+        '-Djdk.reflect.useDirectMethodHandle=false',
+        '-Xmx2048m',
+        '-Xms512m'
     ]
 }
 

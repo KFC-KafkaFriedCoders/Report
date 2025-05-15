@@ -1,12 +1,13 @@
-# Payment Guard
+# Store Inactivity Detector
 
-이 프로젝트는 Kafka 토픽 간 데이터 파이프라인을 구성하는 애플리케이션입니다.
+이 프로젝트는 Kafka 토픽에서 입력된 데이터를 기반으로 일정 시간동안 활동이 없는 상점(store)을 감지하는 애플리케이션입니다.
 
 ## 기능
 
-- `test-topic`에서 메시지를 소비
-- 수신한 메시지를 변환 없이 `3_non_response` 토픽으로 전송
-- 이로써 테스트 데이터를 실제 비즈니스 파이프라인에 흘려보낼 수 있음
+- `test-topic`에서 메시지 소비
+- 각 store_brand + store_id 조합의 마지막 활동 시간 추적
+- 30초 동안 활동이 없는 상점 감지
+- 비활성 상태로 감지된 상점 정보를 `3_non_response` 토픽으로 전송
 
 ## 사전 요구사항
 
@@ -27,6 +28,21 @@
    ./run.sh
    ```
 
+## 알림 형식
+
+비활성 상태로 감지된 상점에 대한 알림은 다음과 같은 JSON 형식으로 전송됩니다:
+
+```json
+{
+  "alert_type": "inactivity",
+  "store_brand": "[store_brand 값]",
+  "store_id": [store_id 값],
+  "last_activity_time": [timestamp],
+  "current_time": [timestamp],
+  "inactive_seconds": [seconds]
+}
+```
+
 ## 토픽 확인 방법
 
 Kafka Control Center UI에서 토픽 데이터를 확인할 수 있습니다.
@@ -38,10 +54,12 @@ Kafka Control Center UI에서 토픽 데이터를 확인할 수 있습니다.
 
 ```
 [purchase-main]      [payment_guard-main]
-Excel 데이터 ---> test-topic ---> 3_non_response
+Excel 데이터 ---> test-topic ---(가공)--> 3_non_response
+                          |
+                   상태 관리 및 비활성 감지
 ```
 
 ## 관련 프로젝트
 
 - `purchase-main`: Excel 데이터를 `test-topic`으로 보내는 애플리케이션
-- `payment_guard-main`: `test-topic`에서 데이터를 소비하여 `3_non_response`로 보내는 애플리케이션
+- `payment_guard-main`: `test-topic`에서 데이터를 소비하고 비활성 상태를 감지하여 `3_non_response`로 알림을 보내는 애플리케이션
