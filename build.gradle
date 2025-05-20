@@ -9,6 +9,9 @@ version = '1.0-SNAPSHOT'
 
 repositories {
     mavenCentral()
+    maven {
+        url "https://packages.confluent.io/maven/"
+    }
 }
 
 dependencies {
@@ -37,7 +40,8 @@ dependencies {
 
     // Avro
     implementation 'org.apache.avro:avro:1.11.1'
-    implementation 'org.apache.flink:flink-avro:1.17.1' // Flink 버전에 맞게 조정
+    implementation 'org.apache.flink:flink-avro:1.18.0'
+    implementation 'org.apache.flink:flink-avro-confluent-registry:1.18.0'
 }
 
 avro {
@@ -73,7 +77,6 @@ application {
     ]
 }
 
-// Gradle 실행 JVM 옵션 설정
 tasks.withType(JavaExec) {
     jvmArgs = [
         '--add-opens=java.base/java.util=ALL-UNNAMED',
@@ -101,10 +104,15 @@ jar {
         attributes 'Main-Class': 'org.example.payment_guard.Main'
     }
     
-    // Include all dependencies in the jar
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
     
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+task printClasspath {
+    doLast {
+        println configurations.runtimeClasspath.collect { it }.join(':')
+    }
 }
