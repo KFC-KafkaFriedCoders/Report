@@ -40,3 +40,4 @@ bin/
 
 ### Mac OS ###
 .DS_Storejava_pid*.hprof
+java_pid*.hprof
