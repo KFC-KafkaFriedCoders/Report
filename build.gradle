@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'application'
     id "com.github.davidmc24.gradle.plugin.avro" version "1.9.1"
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 group = 'org.example.payment_guard'
@@ -12,19 +13,20 @@ repositories {
     maven {
         url "https://packages.confluent.io/maven/"
     }
+    maven { url "https://maven.google.com" }
 }
 
 dependencies {
+    implementation 'org.postgresql:postgresql:42.7.3'
     // Flink Core
     implementation 'org.apache.flink:flink-streaming-java:1.18.0'
     implementation 'org.apache.flink:flink-clients:1.18.0'
     
-    // Flink Kafka Connector
-    implementation 'org.apache.flink:flink-connector-kafka:3.0.1-1.18'
-    implementation 'org.apache.flink:flink-connector-base:1.18.0'
-    
     // Kafka Clients (직접 사용)
     implementation 'org.apache.kafka:kafka-clients:3.4.0'
+    // Confluent Schema Registry + Avro Serializer
+    implementation 'io.confluent:kafka-avro-serializer:7.6.0'
+    implementation 'io.confluent:kafka-schema-registry-client:7.6.0'
     
     // JSON Processing
     implementation 'org.apache.flink:flink-json:1.18.0'
@@ -42,6 +44,11 @@ dependencies {
     implementation 'org.apache.avro:avro:1.11.1'
     implementation 'org.apache.flink:flink-avro:1.18.0'
     implementation 'org.apache.flink:flink-avro-confluent-registry:1.18.0'
+
+    /* ---------- Gemini(Pro) SDK ---------- */
+    implementation 'com.google.genai:google-genai:1.0.0'    
+    implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'io.github.cdimascio:dotenv-java:3.0.0'
 }
 
 avro {
@@ -56,6 +63,11 @@ sourceSets {
             srcDirs += 'build/generated-main-avro-java'
         }
     }
+}
+
+shadowJar {
+  archiveBaseName.set('report-job')
+  mergeServiceFiles()  // META-INF/services 병합
 }
 
 application {

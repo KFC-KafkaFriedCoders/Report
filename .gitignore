@@ -43,3 +43,5 @@ bin/
 java_pid*.hprof
 
 *.hprof
+
+.env
