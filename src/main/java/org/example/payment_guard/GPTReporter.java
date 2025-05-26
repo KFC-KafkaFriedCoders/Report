@@ -30,31 +30,33 @@ import java.util.List;
  */
 public class GPTReporter implements AutoCloseable {
 
-    /* ---------- constants ---------- */
-    private static final String JDBC_URL =
-            "jdbc:postgresql://tgpostgresql.cr4guwc0um8m.ap-northeast-2.rds.amazonaws.com:5432/tgpostgreDB";
-    private static final String JDBC_USER = "tgadmin";
-    private static final String JDBC_PASS = "p12345678";
-
-    // 추천 모델 – 성능 대비 비용이 낮은 편
     private static final String MODEL = "gpt-4o-mini";
     private static final String OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
-
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final DateTimeFormatter TS_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
-    /* ---------- fields ---------- */
     private final String apiKey;
+    private final String jdbcUrl;
+    private final String jdbcUser;
+    private final String jdbcPass;
     private final Connection conn;
 
-    /* ---------- constructor ---------- */
     public GPTReporter() throws SQLException {
         Dotenv env = Dotenv.configure().ignoreIfMissing().load();
+        
         apiKey = env.get("OPENAI_API_KEY");
+        jdbcUrl = env.get("DB_URL");
+        jdbcUser = env.get("DB_USER");
+        jdbcPass = env.get("DB_PASSWORD");
+        
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalStateException("OPENAI_API_KEY not found in .env");
         }
-        conn = DriverManager.getConnection(JDBC_URL, JDBC_USER, JDBC_PASS);
+        if (jdbcUrl == null || jdbcUser == null || jdbcPass == null) {
+            throw new IllegalStateException("DB 환경변수가 설정되지 않았습니다. .env 파일을 확인해주세요.");
+        }
+        
+        conn = DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPass);
     }
 
     /* ---------- public API ---------- */
