@@ -1,0 +1,84 @@
+name: Report API EC2 배포
+on:
+  push:
+    branches: feat/restful
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: JDK 17 설치 (빌드용)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      
+      - name: 백엔드 프로젝트 디렉토리로 이동 및 빌드
+        run: |
+          cd han_noon_back/Report
+          chmod +x gradlew
+          ./gradlew clean bootJar
+      
+      - name: SSH 프라이빗 키 저장
+        run: |
+          echo "${{ secrets.EC2_KEY }}" > ec2_key.pem
+          chmod 600 ec2_key.pem
+      
+      - name: .env 파일 생성 및 EC2로 복사
+        run: |
+          cat > report.env << EOF
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          DB_URL=${{ secrets.DB_URL }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          EOF
+          
+          scp -i ec2_key.pem -o StrictHostKeyChecking=no \
+            report.env ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USER }}/.env
+      
+      - name: 빌드된 JAR 파일을 EC2로 복사
+        run: |
+          scp -i ec2_key.pem -o StrictHostKeyChecking=no \
+            han_noon_back/Report/build/libs/payment_guard-*.jar \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USER }}/report-api.jar
+      
+      - name: EC2에 SSH 접속해 Report API 서버 재시작
+        run: |
+          ssh -i ec2_key.pem -o StrictHostKeyChecking=no \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+              # 기존 Report API 프로세스 종료
+              pkill -f 'java -jar.*report-api.jar' || true
+              sleep 5
+          
+              # 기존 리포트 API 로그 파일 삭제
+              rm -f report-api.log
+              
+              # Report API 시작 (포트 8081, 기존 app.jar와 독립)
+              nohup java -jar /home/${USER}/report-api.jar > report-api.log 2>&1 &
+          
+              # 시작 확인
+              sleep 15
+              if pgrep -f 'java -jar.*report-api.jar' > /dev/null; then
+                echo "✅ Report API 시작 성공 (포트 8081)"
+                echo "📊 기존 Consumer API (포트 8080)와 함께 실행 중"
+              else
+                echo "❌ Report API 시작 실패"
+                tail -20 report-api.log
+                exit 1
+              fi
+              
+              # 헬스체크
+              sleep 5
+              if curl -f http://localhost:8081/api/reports/health > /dev/null 2>&1; then
+                echo "💚 Report API 헬스체크 성공!"
+              else
+                echo "💥 Report API 헬스체크 실패"
+                tail -20 report-api.log
+              fi
+              
+              # 두 서비스 모두 실행 중인지 확인
+              echo "🔍 현재 실행 중인 Java 애플리케이션:"
+              ps aux | grep 'java -jar' | grep -v grep || true
+          EOF
