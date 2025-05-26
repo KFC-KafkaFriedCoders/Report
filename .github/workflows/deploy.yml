@@ -15,9 +15,8 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
       
-      - name: 백엔드 프로젝트 디렉토리로 이동 및 빌드
+      - name: 백엔드 프로젝트 빌드
         run: |
-          cd han_noon_back/Report
           chmod +x gradlew
           ./gradlew clean bootJar
       
@@ -41,7 +40,7 @@ jobs:
       - name: 빌드된 JAR 파일을 EC2로 복사
         run: |
           scp -i ec2_key.pem -o StrictHostKeyChecking=no \
-            han_noon_back/Report/build/libs/payment_guard-*.jar \
+            build/libs/payment_guard-*.jar \
             ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USER }}/report-api.jar
       
       - name: EC2에 SSH 접속해 Report API 서버 재시작
