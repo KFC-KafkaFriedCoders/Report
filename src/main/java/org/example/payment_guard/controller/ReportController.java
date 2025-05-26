@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import javax.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api/reports")
@@ -28,8 +29,12 @@ public class ReportController {
      * GET /api/reports/generate?count={20|50|100|250|500}
      */
     @GetMapping("/generate")
-    public ResponseEntity<?> generateReport(@RequestParam int count) {
+    public ResponseEntity<?> generateReport(@RequestParam int count, HttpServletRequest request) {
         logger.info("리포트 생성 요청 받음: {} 건", count);
+        
+        // IP 주소 추출 및 로그 출력
+        String clientIp = getClientIpAddress(request);
+        logger.info("요청 IP: {}", clientIp);
         long startTime = System.currentTimeMillis();
 
         try {
@@ -122,5 +127,19 @@ public class ReportController {
             public final long timestamp = System.currentTimeMillis();
             public final String message = "Report API is running";
         });
+    }
+    
+    /**
+     * 클라이언트 IP 주소를 추출하는 메서드
+     * 프록시나 로드밸런서를 고려하여 실제 클라이언트 IP를 가져옴
+     */
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedForHeader = request.getHeader("X-Forwarded-For");
+        if (xForwardedForHeader == null || xForwardedForHeader.isEmpty()) {
+            return request.getRemoteAddr();
+        } else {
+            // X-Forwarded-For 헤더에서 첫 번째 IP 추출 (실제 클라이언트 IP)
+            return xForwardedForHeader.split(",")[0].trim();
+        }
     }
 }
