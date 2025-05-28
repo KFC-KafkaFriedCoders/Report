@@ -103,11 +103,11 @@ public class ReportController {
     public ResponseEntity<Object> getReportStatus(@RequestParam(defaultValue = "전체") String brand) {
         try {
             int recordCount = reportService.getTotalRecordCount(brand);
-            
+            String finalBrand = brand;
             return ResponseEntity.ok(new Object() {
                 public final boolean success = true;
                 public final int totalRecords = recordCount;
-                public final String brand = brand;
+                public final String brand = finalBrand;
                 public final String message = String.format("전체".equals(brand) ? 
                     "현재 전체 브랜드에 총 %d건의 데이터가 있습니다." : 
                     "%s 브랜드에 총 %d건의 데이터가 있습니다.", 
