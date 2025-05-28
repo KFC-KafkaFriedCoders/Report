@@ -126,7 +126,9 @@ public class GPTReporter implements AutoCloseable {
 
         List<String> result = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, limit);
+            ps.setString(1, brand);  // 첫 번째 ?
+            ps.setString(2, brand);  // 두 번째 ?
+            ps.setInt(3, limit);     // 세 번째 ?
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     result.add(String.format("- %s | %s | %,d원 | %s | 메뉴=%s",
