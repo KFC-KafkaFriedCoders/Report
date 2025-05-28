@@ -61,8 +61,37 @@ public class GPTReporter implements AutoCloseable {
 
     /* ---------- public API ---------- */
 
+    /** Builds a sales report based on the latest {@code limit} rows in <code>receipt_raw</code> for specific brand. */
+    public String buildReport(int limit, String brand) throws Exception {
+        List<String> lines = fetchRows(limit, brand);
+
+        String brandFilter = "전체".equals(brand) ? "전체 프랜차이즈" : brand;
+        
+        String prompt = """
+            다음은 %s의 최근 %d건 영수증 데이터입니다. 이 데이터를 바탕으로 %s 매출 분석 보고서를 작성해 주세요.
+            
+            프랜차이즈는 store_brand로 구분합니다.
+            지점은 store_name으로 구분합니다.
+
+            %s 내용을 포함해 한국어로 정리해 주세요:
+            
+            1. %s 총 매출 및 거래 건수
+            2. %s 지점별 매출 순위 (상위 5개)
+            3. 인기 메뉴 Top-5 및 매출 기여도
+            4. 평균 객단가 및 거래 패턴 분석
+            5. 특이사항 및 개선 제안
+            
+            데이터:
+            %s
+            """.formatted(brandFilter, limit, brandFilter, 
+                         "전체".equals(brand) ? "프랜차이즈별 비교 분석 및" : "",
+                         brandFilter, brandFilter, String.join("\n", lines));
+
+        return callChatGPT(prompt);
+    }
+
     /** Builds a sales report based on the latest {@code limit} rows in <code>receipt_raw</code>. */
-    public String buildReport(int limit) throws Exception {
+    /*public String buildReport(int limit) throws Exception {
         List<String> lines = fetchRows(limit);
 
         String prompt = """
@@ -81,18 +110,19 @@ public class GPTReporter implements AutoCloseable {
             """.formatted(limit, String.join("\n", lines));
 
         return callChatGPT(prompt);
-    }
+    }*/
 
     /* ---------- helper methods ---------- */
 
     /** Query Postgres and format each row as a single line of text. */
-    private List<String> fetchRows(int limit) throws SQLException {
+    private List<String> fetchRows(int limit, String brand) throws SQLException {
         String sql = """
-                SELECT store_brand, store_name, total_price, event_time, menu_items
-                FROM receipt_raw
-                ORDER BY event_time DESC
-                LIMIT ?
-                """;
+        SELECT store_brand, store_name, total_price, event_time, menu_items
+        FROM receipt_raw
+        WHERE ? = '전체' OR store_brand = ?
+        ORDER BY event_time DESC
+        LIMIT ?
+        """;
 
         List<String> result = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -173,7 +203,7 @@ public class GPTReporter implements AutoCloseable {
     /* ---------- quick test ---------- */
     public static void main(String[] args) throws Exception {
         try (GPTReporter reporter = new GPTReporter()) {
-            System.out.println(reporter.buildReport(10));
+            // System.out.println(reporter.buildReport(10));
         }
     }
 

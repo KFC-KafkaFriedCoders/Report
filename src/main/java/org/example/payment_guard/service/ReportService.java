@@ -51,24 +51,41 @@ public class ReportService {
     }
 
     /**
-     * 데이터베이스의 총 레코드 수 조회
+     * 데이터베이스의 총 레코드 수 조회 (브랜드별)
      */
-    public int getTotalRecordCount() {
-        String sql = "SELECT COUNT(*) FROM receipt_raw";
+    public int getTotalRecordCount(String brand) {
+        String sql;
+        if ("전체".equals(brand)) {
+            sql = "SELECT COUNT(*) FROM receipt_raw";
+        } else {
+            sql = "SELECT COUNT(*) FROM receipt_raw WHERE store_brand = ?";
+        }
         
         try (Connection conn = DriverManager.getConnection(jdbcUrl, jdbcUser, jdbcPass);
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
             
-            if (rs.next()) {
-                return rs.getInt(1);
+            if (!"전체".equals(brand)) {
+                ps.setString(1, brand);
             }
-            return 0;
+            
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+                return 0;
+            }
             
         } catch (SQLException e) {
             logger.error("데이터베이스 연결 또는 조회 중 오류 발생", e);
             throw new ReportGenerationException("데이터베이스 조회 중 오류가 발생했습니다.", e);
         }
+    }
+
+    /**
+     * 데이터베이스의 총 레코드 수 조회 (전체 - 호환성)
+     */
+    public int getTotalRecordCount() {
+        return getTotalRecordCount("전체");
     }
 
     /**
@@ -81,15 +98,15 @@ public class ReportService {
     }
 
     /**
-     * 캐시를 사용한 동기 리포트 생성
+     * 캐시를 사용한 동기 리포트 생성 (브랜드별)
      */
-    @Cacheable(value = "reports", key = "#count", condition = "#count <= 500")
-    public String generateReportSync(int count) {
-        logger.info("동기 리포트 생성 시작: {} 건", count);
+    @Cacheable(value = "reports", key = "#count + '_' + #brand", condition = "#count <= 500")
+    public String generateReportSync(int count, String brand) {
+        logger.info("동기 리포트 생성 시작: {} 건, 브랜드: {}", count, brand);
         
         try (GPTReporter reporter = new GPTReporter()) {
-            String report = reporter.buildReport(count);
-            logger.info("동기 리포트 생성 완료: {} 건", count);
+            String report = reporter.buildReport(count, brand);
+            logger.info("동기 리포트 생성 완료: {} 건, 브랜드: {}", count, brand);
             return report;
             
         } catch (Exception e) {
@@ -99,17 +116,25 @@ public class ReportService {
     }
 
     /**
-     * 비동기 리포트 생성 (큰 데이터셋용)
+     * 캐시를 사용한 동기 리포트 생성 (호환성)
+     */
+    @Cacheable(value = "reports", key = "#count + '_전체'", condition = "#count <= 500")
+    public String generateReportSync(int count) {
+        return generateReportSync(count, "전체");
+    }
+
+    /**
+     * 비동기 리포트 생성 (큰 데이터셋용) - 브랜드별
      */
     @Async
-    public CompletableFuture<String> generateReportAsync(int count) {
-        logger.info("비동기 리포트 생성 시작: {} 건", count);
+    public CompletableFuture<String> generateReportAsync(int count, String brand) {
+        logger.info("비동기 리포트 생성 시작: {} 건, 브랜드: {}", count, brand);
         
         try (GPTReporter reporter = new GPTReporter()) {
             // 타임아웃 처리를 위한 CompletableFuture
             CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
                 try {
-                    return reporter.buildReport(count);
+                    return reporter.buildReport(count, brand);
                 } catch (Exception e) {
                     throw new RuntimeException("리포트 생성 실패", e);
                 }
@@ -117,7 +142,7 @@ public class ReportService {
             
             // 타임아웃 설정
             String report = future.get(GPT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            logger.info("비동기 리포트 생성 완료: {} 건", count);
+            logger.info("비동기 리포트 생성 완료: {} 건, 브랜드: {}", count, brand);
             return CompletableFuture.completedFuture(report);
             
         } catch (Exception e) {
@@ -127,10 +152,25 @@ public class ReportService {
     }
 
     /**
-     * count에 따라 동기/비동기 선택하여 리포트 생성
+     * 비동기 리포트 생성 (호환성)
+     */
+    @Async
+    public CompletableFuture<String> generateReportAsync(int count) {
+        return generateReportAsync(count, "전체");
+    }
+
+    /**
+     * count에 따라 동기/비동기 선택하여 리포트 생성 - 브랜드별
+     */
+    public Object generateReport(int count, String brand) {
+        // 모든 요청을 동기 처리 (비동기 기능 비활성화)
+        return generateReportSync(count, brand);
+    }
+
+    /**
+     * count에 따라 동기/비동기 선택하여 리포트 생성 (호환성)
      */
     public Object generateReport(int count) {
-        // 모든 요청을 동기 처리 (비동기 기능 비활성화)
-        return generateReportSync(count);
+        return generateReport(count, "전체");
     }
 }

@@ -26,11 +26,14 @@ public class ReportController {
 
     /**
      * 리포트 생성 API
-     * GET /api/reports/generate?count={20|50|100|250|500}
+     * GET /api/reports/generate?count={20|50|100|250|500}&brand={브랜드명|전체}
      */
     @GetMapping("/generate")
-    public ResponseEntity<?> generateReport(@RequestParam int count, HttpServletRequest request) {
-        logger.info("리포트 생성 요청 받음: {} 건", count);
+    public ResponseEntity<?> generateReport(
+            @RequestParam int count, 
+            @RequestParam(defaultValue = "전체") String brand,
+            HttpServletRequest request) {
+        logger.info("리포트 생성 요청 받음: {} 건, 브랜드: {}", count, brand);
         
         // IP 주소 추출 및 로그 출력
         String clientIp = getClientIpAddress(request);
@@ -41,17 +44,17 @@ public class ReportController {
             // 1. count 값 유효성 검증
             reportService.validateCount(count);
 
-            // 2. 데이터 충분성 검증
-            int totalRecords = reportService.getTotalRecordCount();
+            // 2. 데이터 충분성 검증 (브랜드별)
+            int totalRecords = reportService.getTotalRecordCount(brand);
             reportService.validateDataSufficiency(count, totalRecords);
 
             // 3. 리포트 생성 (동기 처리)
-            String report = (String) reportService.generateReport(count);
+            String report = (String) reportService.generateReport(count, brand);
 
             // 4. 결과 반환
             long processingTime = System.currentTimeMillis() - startTime;
             
-            logger.info("리포트 생성 완료: {} 건, 처리시간: {}ms", count, processingTime);
+            logger.info("리포트 생성 완료: {} 건, 브랜드: {}, 처리시간: {}ms", count, brand, processingTime);
             
             return ResponseEntity.ok(new ReportResponse(
                 true, 
@@ -61,7 +64,7 @@ public class ReportController {
             ));
 
         } catch (IllegalArgumentException e) {
-            logger.warn("잘못된 count 값 요청: {}", count);
+            logger.warn("잘못된 파라미터 요청: count={}, brand={}", count, brand);
             return ResponseEntity.badRequest().body(new ReportResponse(
                 false, 
                 e.getMessage()
@@ -94,17 +97,21 @@ public class ReportController {
 
     /**
      * 현재 데이터 상태 조회 API
-     * GET /api/reports/status
+     * GET /api/reports/status?brand={브랜드명|전체}
      */
     @GetMapping("/status")
-    public ResponseEntity<Object> getReportStatus() {
+    public ResponseEntity<Object> getReportStatus(@RequestParam(defaultValue = "전체") String brand) {
         try {
-            int recordCount = reportService.getTotalRecordCount();
+            int recordCount = reportService.getTotalRecordCount(brand);
             
             return ResponseEntity.ok(new Object() {
                 public final boolean success = true;
                 public final int totalRecords = recordCount;
-                public final String message = String.format("현재 총 %d건의 데이터가 있습니다.", recordCount);
+                public final String brand = brand;
+                public final String message = String.format("전체".equals(brand) ? 
+                    "현재 전체 브랜드에 총 %d건의 데이터가 있습니다." : 
+                    "%s 브랜드에 총 %d건의 데이터가 있습니다.", 
+                    brand, recordCount);
             });
             
         } catch (Exception e) {
