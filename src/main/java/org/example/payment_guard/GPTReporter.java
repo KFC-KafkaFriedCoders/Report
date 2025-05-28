@@ -60,37 +60,47 @@ public class GPTReporter implements AutoCloseable {
     }
 
     /* ---------- public API ---------- */
-
-    /** Builds a sales report based on the latest {@code limit} rows in <code>receipt_raw</code> for specific brand. */
     public String buildReport(int limit, String brand) throws Exception {
         List<String> lines = fetchRows(limit, brand);
+        String prompt;
+        if ("전체".equals(brand)) {
+            prompt = """
+            다음은 최근 %d건의 영수증 데이터입니다. 이 데이터를 바탕으로 프랜차이즈별 매출 분석 보고서를 작성해 주세요.
 
-        String brandFilter = "전체".equals(brand) ? "전체 프랜차이즈" : brand;
-        
-        String prompt = """
-            다음은 %s의 최근 %d건 영수증 데이터입니다. 이 데이터를 바탕으로 %s 매출 분석 보고서를 작성해 주세요.
-            
             프랜차이즈는 store_brand로 구분합니다.
             지점은 store_name으로 구분합니다.
 
-            %s 내용을 포함해 한국어로 정리해 주세요:
-            
-            1. %s 총 매출 및 거래 건수
-            2. %s 지점별 매출 순위 (상위 5개)
-            3. 인기 메뉴 Top-5 및 매출 기여도
-            4. 평균 객단가 및 거래 패턴 분석
-            5. 특이사항 및 개선 제안
-            
+            1. 프랜차이즈별 총 매출 순위 (내림차순)
+            2. 프랜차이즈별 평균 객단가 비교
+            3. 각 프랜차이즈에서 가장 많이 팔린 메뉴 Top-3
+            4. 이상 거래 또는 특이사항 (예: 너무 큰 주문, 특정 시간대 집중 등)
+
             데이터:
             %s
-            """.formatted(brandFilter, limit, brandFilter, 
-                         "전체".equals(brand) ? "프랜차이즈별 비교 분석 및" : "",
-                         brandFilter, brandFilter, String.join("\n", lines));
+            """.formatted(limit, String.join("\n", lines));
+        } else {
+            // 특정 브랜드인 경우, 지점별 매출 상하위, 인기 메뉴 등 상세 분석
+            String brandFilter = brand;
+            prompt = """
+            다음은 %s의 최근 %d건 영수증 데이터입니다. 이 데이터를 바탕으로 %s 매출 분석 보고서를 작성해 주세요.
 
+            프랜차이즈는 store_brand로 구분합니다.
+            지점은 store_name으로 구분합니다.
+
+            1. %s 총 매출 및 거래 건수
+            2. %s 지점별 매출 순위 (상위 5개)
+            3. %s 지점별 매출 순위 (하위 5개)
+            4. 인기 메뉴 Top-3
+            5. 평균 객단가
+            6. 특이사항
+
+            데이터:
+            %s
+            """.formatted(brandFilter, limit, brandFilter,
+                    brandFilter, brandFilter, brandFilter, String.join("\n", lines));
+        }
         return callChatGPT(prompt);
     }
-
-    /** Builds a sales report based on the latest {@code limit} rows in <code>receipt_raw</code>. */
     /*public String buildReport(int limit) throws Exception {
         List<String> lines = fetchRows(limit);
 
