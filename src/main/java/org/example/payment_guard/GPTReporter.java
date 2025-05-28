@@ -62,6 +62,14 @@ public class GPTReporter implements AutoCloseable {
     /* ---------- public API ---------- */
     public String buildReport(int limit, String brand) throws Exception {
         List<String> lines = fetchRows(limit, brand);
+
+        int actualCount = lines.size();
+
+        if (actualCount < limit) {
+            return "※ [" + brand + "] 에 대한 영수증 데이터가 부족합니다. "
+                    + "(요청: " + limit + "건, 실제: " + actualCount + "건)";
+        }
+
         String prompt;
         if ("전체".equals(brand)) {
             prompt = """
@@ -70,7 +78,7 @@ public class GPTReporter implements AutoCloseable {
             프랜차이즈는 store_brand로 구분합니다.
             지점은 store_name으로 구분합니다.
 
-            1. 프랜차이즈별 총 매출 순위 (내림차순)
+            1. 프랜차이즈별 총 매출 순위 (내림차순, %d건 내에 있는 모든 프랜차이즈)
             2. 프랜차이즈별 평균 객단가 비교
             3. 각 프랜차이즈에서 가장 많이 팔린 메뉴 Top-3
             4. 이상 거래 또는 특이사항 (예: 너무 큰 주문, 특정 시간대 집중 등)
@@ -101,30 +109,7 @@ public class GPTReporter implements AutoCloseable {
         }
         return callChatGPT(prompt);
     }
-    /*public String buildReport(int limit) throws Exception {
-        List<String> lines = fetchRows(limit);
 
-        String prompt = """
-            다음은 최근 %d건의 영수증 데이터입니다. 이 데이터를 바탕으로 프랜차이즈별 매출 분석 보고서를 작성해 주세요. 다음 항목들을 포함해 한국어로 정리해 주세요:
-
-            프랜차이즈는 store_brand로 구분합니다.
-            지점은 store_name으로 구분합니다.
-
-            1. 프랜차이즈별 총 매출 순위 (내림차순)
-            2. 프랜차이즈별 평균 객단가 비교
-            3. 각 프랜차이즈에서 가장 많이 팔린 메뉴 Top-3
-            4. 이상 거래 또는 특이사항 (예: 너무 큰 주문, 특정 시간대 집중 등)
-
-            데이터:
-            %s
-            """.formatted(limit, String.join("\n", lines));
-
-        return callChatGPT(prompt);
-    }*/
-
-    /* ---------- helper methods ---------- */
-
-    /** Query Postgres and format each row as a single line of text. */
     private List<String> fetchRows(int limit, String brand) throws SQLException {
         String sql = """
         SELECT store_brand, store_name, total_price, event_time, menu_items
@@ -153,7 +138,6 @@ public class GPTReporter implements AutoCloseable {
         return result;
     }
 
-    /** Do the HTTPS POST to OpenAI Chat API and return the generated text. */
     private String callChatGPT(String prompt) throws Exception {
         // Build request body
         ObjectNode root = MAPPER.createObjectNode();
