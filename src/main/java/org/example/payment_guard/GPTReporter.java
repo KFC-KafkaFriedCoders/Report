@@ -63,17 +63,12 @@ public class GPTReporter implements AutoCloseable {
     public String buildReport(int limit, String brand) throws Exception {
         List<String> lines = fetchRows(limit, brand);
 
-        int actualCount = lines.size();
-
-        if (actualCount < limit) {
-            return "※ [" + brand + "] 에 대한 영수증 데이터가 부족합니다. "
-                    + "(요청: " + limit + "건, 실제: " + actualCount + "건)";
-        }
-
         String prompt;
         if ("전체".equals(brand)) {
             prompt = """
             다음은 최근 %d건의 영수증 데이터입니다. 이 데이터를 바탕으로 프랜차이즈별 매출 분석 보고서를 작성해 주세요.
+            
+            %d건의 데이터가 없을 경우 실제 몇개의 데이터가 있는지 알려주고 보고서 작성을 중단해 주세요
 
             프랜차이즈는 store_brand로 구분합니다.
             지점은 store_name으로 구분합니다.
@@ -85,12 +80,14 @@ public class GPTReporter implements AutoCloseable {
 
             데이터:
             %s
-            """.formatted(limit, limit ,String.join("\n",lines));
+            """.formatted(limit, limit, limit ,String.join("\n",lines));
         } else {
             // 특정 브랜드인 경우, 지점별 매출 상하위, 인기 메뉴 등 상세 분석
             String brandFilter = brand;
             prompt = """
             다음은 %s의 최근 %d건 영수증 데이터입니다. 이 데이터를 바탕으로 %s 매출 분석 보고서를 작성해 주세요.
+
+            %d건의 데이터가 없을 경우 실제 몇개의 데이터가 있는지 알려주고 보고서 작성을 중단해 주세요
 
             프랜차이즈는 store_brand로 구분합니다.
             지점은 store_name으로 구분합니다.
@@ -104,7 +101,7 @@ public class GPTReporter implements AutoCloseable {
 
             데이터:
             %s
-            """.formatted(brandFilter, limit, brandFilter,
+            """.formatted(brandFilter, limit, brandFilter, limit,
                     brandFilter, brandFilter, brandFilter, String.join("\n", lines));
         }
         return callChatGPT(prompt);
