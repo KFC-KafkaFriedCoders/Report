@@ -85,7 +85,7 @@ public class GPTReporter implements AutoCloseable {
 
             데이터:
             %s
-            """.formatted(limit, String.join("\n", lines));
+            """.formatted(limit, limit ,String.join("\n",lines));
         } else {
             // 특정 브랜드인 경우, 지점별 매출 상하위, 인기 메뉴 등 상세 분석
             String brandFilter = brand;
