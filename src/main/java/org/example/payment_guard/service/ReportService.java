@@ -22,7 +22,7 @@ public class ReportService {
     private static final Logger logger = LoggerFactory.getLogger(ReportService.class);
     
     private static final List<Integer> ALLOWED_COUNTS = Arrays.asList(20, 50, 100, 250, 500);
-    private static final long GPT_TIMEOUT_SECONDS = 30;
+    private static final long GPT_TIMEOUT_SECONDS = 60;
     
     private final String jdbcUrl;
     private final String jdbcUser;

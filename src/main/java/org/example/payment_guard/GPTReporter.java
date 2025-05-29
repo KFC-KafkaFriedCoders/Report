@@ -168,8 +168,8 @@ public class GPTReporter implements AutoCloseable {
         conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
         conn.setRequestProperty("Authorization", "Bearer " + apiKey);
         conn.setDoOutput(true);
-        conn.setConnectTimeout(15_000);
-        conn.setReadTimeout(30_000);
+        conn.setConnectTimeout(30_000);
+        conn.setReadTimeout(60_000);
 
         // Send body
         try (OutputStream os = conn.getOutputStream()) {
